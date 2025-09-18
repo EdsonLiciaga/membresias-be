@@ -4,7 +4,7 @@ namespace membresias.be.Models
 {
     public class Auditable : IAuditable
     {
-        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
-        public DateTime ModifiedDate { get; set; } = DateTime.UtcNow; 
+        public DateTimeOffset CreatedDate { get; set; } = new DateTimeOffset(DateTime.UtcNow).ToOffset(TimeSpan.FromHours(-6));
+        public DateTimeOffset ModifiedDate { get; set; } = new DateTimeOffset(DateTime.UtcNow).ToOffset(TimeSpan.FromHours(-6)); 
     }
 }
