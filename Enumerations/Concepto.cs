@@ -6,7 +6,8 @@ namespace membresias.be.Enumerations
     {
         public static readonly Concepto NoEncontrado = new("NE", "No encontrado", 0);
         public static readonly Concepto AyudaMutua = new("AYUDA_MUTUA", "Ayuda mutua", 1);
-        public static readonly Concepto CasaClub = new("CASA_CLUB", "Casa club", 2); 
+        public static readonly Concepto CasaClub = new("CASA_CLUB", "Casa club", 2);
+        public static readonly Concepto Reingreso = new("REINGRESO", "Reingreso", 3); 
 
         public Concepto(string codigo, string nombre, short order) : base(codigo, nombre, order)
         {}
@@ -16,7 +17,8 @@ namespace membresias.be.Enumerations
         public static List<Concepto> ConceptoList = new()
         {
             AyudaMutua, 
-            CasaClub
+            CasaClub, 
+            Reingreso
         }; 
     }
 }

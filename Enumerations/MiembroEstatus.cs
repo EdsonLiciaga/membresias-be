@@ -10,6 +10,8 @@
         public MiembroEstatus(string codigo, string nombre, short order) : base(codigo, nombre, order)
         {}
 
+        public static MiembroEstatus GetByCode(string codigo) => MiembroEstatusList.FirstOrDefault(me => me.Codigo.Equals(codigo)) ?? NoEncontrado;
+
         public static List<MiembroEstatus> MiembroEstatusList = new()
         {
             Activo,
