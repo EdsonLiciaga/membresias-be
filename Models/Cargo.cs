@@ -3,7 +3,7 @@
     public class Cargo : Auditable
     {
         public int IdCargo { get; set; }
-        public string Descripcion { get; set; }
+        public string? Descripcion { get; set; }
         public int Monto { get; set; }
         public DateTimeOffset FechaCargo { get; set; }
         public bool IsPagado { get; set; } = false; 

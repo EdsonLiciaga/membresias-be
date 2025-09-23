@@ -23,15 +23,21 @@ namespace membresias.be.Controllers
         }
 
         [HttpGet("GetMiembros")]
-        public async Task<IEnumerable<MiembroDto>> GetMiembrosAsync()
+        public async Task<IEnumerable<MiembroDto>> GetMiembrosAsync(string? membresiaCodigo)
         {
-            return await _miembroService.GetMiembros();
+            return await _miembroService.GetMiembros(membresiaCodigo);
         }
 
         [HttpGet("GetMiembroById/{miembroId}")]
         public async Task<MiembroDto> GetMiembroByIdAsync(int miembroId)
         {
             return await _miembroService.GetMiembroById(miembroId); 
+        }
+
+        [HttpGet("GetEstadoDeCuenta/{miembroId}")]
+        public async Task<EstadoCuentaDto> GetEstadoDeCuentaAsync(int miembroId, DateTimeOffset fechaDesde,  DateTimeOffset fechaHasta)
+        {
+            return await _miembroService.GetEstadoDeCuenta(miembroId, fechaDesde, fechaHasta); 
         }
 
         [HttpPut("UpdateMiembro/{miembroId}")]

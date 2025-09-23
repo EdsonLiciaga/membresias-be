@@ -5,6 +5,7 @@ namespace membresias.be.Models.Dtos
     public class FallecimientoDto
     {
         public int IdFallecimiento { get; set; }
+        public int IdMiembro { get; set; }
         public string FechaFallecimiento { get; set; }
     }
 
@@ -12,7 +13,9 @@ namespace membresias.be.Models.Dtos
     {
         public FallecimientoProfile()
         {
-            CreateMap<Fallecimiento, FallecimientoDto>(); 
+            CreateMap<Fallecimiento, FallecimientoDto>()
+                .ForMember(dest => dest.FechaFallecimiento, 
+                opt => opt.MapFrom(src => src.FechaFallecimiento.Date.ToString("yyyy-MM-dd"))); 
         }
     }
 }
