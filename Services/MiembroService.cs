@@ -6,8 +6,10 @@ using membresias.be.Filters;
 using membresias.be.Models;
 using membresias.be.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 using Microsoft.OpenApi.Validations;
 using System.Globalization;
+using System.Reflection.Metadata.Ecma335;
 
 namespace membresias.be.Services
 {
@@ -32,17 +34,17 @@ namespace membresias.be.Services
             {
                 _logger.LogInformation($"Iniciando solicitud de {nameof(CreateMiembro)}.");
 
-                var edad = CalcularEdad(miembro.FechaNacimiento); 
+                var edad = CalcularEdad(miembro.FechaNacimiento);
 
                 if (edad < 40)
                     throw new ValidationException("Miembros", "Solo se admiten miembros de 40 años en adelante.");
 
                 // Verifica si ya hay un miembro con la misma CURP
                 var miembroDuplicate = await _dbContext.Miembros
-                    .Where(m => !m.IsDeleted 
+                    .Where(m => !m.IsDeleted
                         && m.Curp == miembro.Curp)
                     .FirstOrDefaultAsync();
-                
+
                 if (miembroDuplicate != null && miembroDuplicate.Curp.Equals(miembro.Curp))
                     throw new ValidationException("Miembros", "La CURP ya está registrada.");
 
@@ -69,14 +71,22 @@ namespace membresias.be.Services
             }
         }
 
-        public async Task<IEnumerable<MiembroDto>> GetMiembros()
+        public async Task<IEnumerable<MiembroDto>> GetMiembros(string? membresiaCodigo)
         {
             try
             {
                 _logger.LogInformation($"Iniciando solicitud de {nameof(GetMiembros)}");
 
-                var miembros = await _dbContext.Miembros
-                    .Where(m => !m.IsDeleted)
+                var query = _dbContext.Miembros
+                    .Where(m => !m.IsDeleted);
+
+                if (!string.IsNullOrWhiteSpace(membresiaCodigo))
+                {
+                    query = query.Where(m => m.MembresiaCodigo.Equals(membresiaCodigo));
+                }
+
+                var miembros = await query
+                    .OrderBy(m => m.Nombre)
                     .ToListAsync();
 
                 _logger.LogInformation($"miembros: {miembros.Count}");
@@ -88,22 +98,26 @@ namespace membresias.be.Services
 
                 var fallecimientos = await _dbContext.Fallecimientos
                     .Where(f => !f.IsDeleted)
-                    .ToListAsync(); 
+                    .ToListAsync();
 
                 foreach (var fallecimiento in fallecimientos)
                 {
-                    var miembroDto = miembrosDtoList.First(m => m.IdMiembro == fallecimiento.IdMiembro);
+                    var miembroDto = miembrosDtoList.FirstOrDefault(m => m.IdMiembro == fallecimiento.IdMiembro);
 
-                    miembroDto.FechaFallecimiento = fallecimiento.FechaFallecimiento.Date.ToString("yyyy-MM-dd"); 
+                    if (miembroDto is null) 
+                        continue; 
+
+                    miembroDto.FechaFallecimiento = fallecimiento.FechaFallecimiento.Date.ToString("yyyy-MM-dd");
                 }
 
-                return miembrosDtoList; 
+                return miembrosDtoList;
             }
             finally
             {
-                _logger.LogInformation($"Finalizando solicitud de {nameof(GetMiembros)}"); 
+                _logger.LogInformation($"Finalizando solicitud de {nameof(GetMiembros)}");
             }
         }
+
 
         public async Task<MiembroDto> GetMiembroById(int id)
         {
@@ -122,11 +136,11 @@ namespace membresias.be.Services
 
                 _logger.LogInformation($"Se ha encontrado un miembro. Nombre: {miembro.Nombre}, PrimerApellido: {miembro.PrimerApellido}.");
 
-                return _mapper.Map<MiembroDto>(miembro); 
+                return _mapper.Map<MiembroDto>(miembro);
             }
             finally
             {
-                _logger.LogInformation($"Finalizando solicitud de {nameof(GetMiembroById)}."); 
+                _logger.LogInformation($"Finalizando solicitud de {nameof(GetMiembroById)}.");
             }
         }
 
@@ -136,7 +150,7 @@ namespace membresias.be.Services
             {
                 _logger.LogInformation($"Iniciando solicitud de {nameof(UpdateMiembro)}.");
 
-                var edad = CalcularEdad(miembro.FechaNacimiento); 
+                var edad = CalcularEdad(miembro.FechaNacimiento);
 
                 if (edad < 40)
                     throw new ValidationException("Miembros", "Solo se admiten miembros de 40 años en adelante.");
@@ -163,22 +177,22 @@ namespace membresias.be.Services
                 miembroToUpdate.Nombre = miembro.Nombre;
                 miembroToUpdate.PrimerApellido = miembro.PrimerApellido;
                 miembroToUpdate.SegundoApellido = miembro.SegundoApellido;
-                miembroToUpdate.Curp = miembro.Curp; 
+                miembroToUpdate.Curp = miembro.Curp;
                 miembroToUpdate.FechaNacimiento = miembro.FechaNacimiento;
-                miembroToUpdate.Edad = edad; 
+                miembroToUpdate.Edad = edad;
                 miembroToUpdate.MembresiaCodigo = miembro.MembresiaCodigo;
-                miembroToUpdate.ModifiedDate = new DateTimeOffset(DateTime.UtcNow).ToOffset(TimeSpan.FromHours(-6)); 
+                miembroToUpdate.ModifiedDate = new DateTimeOffset(DateTime.UtcNow).ToOffset(TimeSpan.FromHours(-6));
 
                 var result = await _dbContext.SaveChangesAsync() > 0;
 
                 if (result)
-                    _logger.LogInformation($"Se ha actualizado un miembro. Nombre: {miembro.Nombre}, PrimerApellido: {miembro.PrimerApellido}."); 
+                    _logger.LogInformation($"Se ha actualizado un miembro. Nombre: {miembro.Nombre}, PrimerApellido: {miembro.PrimerApellido}.");
 
-                return result; 
+                return result;
             }
             finally
             {
-                _logger.LogInformation($"Finalizando solicitud de {nameof(UpdateMiembro)}."); 
+                _logger.LogInformation($"Finalizando solicitud de {nameof(UpdateMiembro)}.");
             }
         }
 
@@ -201,11 +215,11 @@ namespace membresias.be.Services
                 miembro.ModifiedDate = new DateTimeOffset(DateTime.UtcNow).ToOffset(TimeSpan.FromHours(-6));
 
                 var result = await _dbContext.SaveChangesAsync() > 0;
-                return result; 
+                return result;
             }
             finally
             {
-                _logger.LogInformation($"Finalizando solicitud de {nameof(DeactivateMiembro)}."); 
+                _logger.LogInformation($"Finalizando solicitud de {nameof(DeactivateMiembro)}.");
             }
         }
 
@@ -232,18 +246,18 @@ namespace membresias.be.Services
                 {
                     Concepto.Reingreso.Codigo,
                     Concepto.CasaClub.Codigo
-                }; 
+                };
 
-                var tarifas = await _dbContext.Tarifas  
+                var tarifas = await _dbContext.Tarifas
                     .Where(t => !t.IsDeleted
                         && t.MembresiaCodigo.Equals(miembro.MembresiaCodigo)
                         && conceptos.Contains(t.ConceptoCodigo))
                     .ToListAsync();
 
-                var cargosToCreate = new List<Cargo>(); 
-                foreach(var concepto in conceptos)
+                var cargosToCreate = new List<Cargo>();
+                foreach (var concepto in conceptos)
                 {
-                    var monto = tarifas.First(t => t.ConceptoCodigo.Equals(concepto)).Monto; 
+                    var monto = tarifas.First(t => t.ConceptoCodigo.Equals(concepto)).Monto;
 
                     var cargo = new Cargo()
                     {
@@ -253,22 +267,22 @@ namespace membresias.be.Services
                         ConceptoCodigo = concepto
                     };
 
-                    cargosToCreate.Add(cargo); 
+                    cargosToCreate.Add(cargo);
                 }
 
                 var mes = DateTime.UtcNow.ToString("MMMM", CultureInfo.CreateSpecificCulture("es")).ToUpper();
 
                 cargosToCreate[0].Descripcion = "REINGRESO";
-                cargosToCreate[1].Descripcion = $"PAGO MES - {mes}"; 
+                cargosToCreate[1].Descripcion = $"PAGO MES - {mes}";
 
-                await _dbContext.Cargos.AddRangeAsync(cargosToCreate); 
+                await _dbContext.Cargos.AddRangeAsync(cargosToCreate);
 
                 var result = await _dbContext.SaveChangesAsync() > 0;
                 return result;
             }
             finally
             {
-                _logger.LogInformation($"Finalizando solicitud de {nameof(ReactivateMiembro)}."); 
+                _logger.LogInformation($"Finalizando solicitud de {nameof(ReactivateMiembro)}.");
             }
         }
 
@@ -281,7 +295,7 @@ namespace membresias.be.Services
                 if (miembroEstatusCodigo.Equals(MiembroEstatus.Inactivo.Codigo))
                     return await DeactivateMiembro(id);
                 else
-                    return await ReactivateMiembro(id);          
+                    return await ReactivateMiembro(id);
             }
             finally
             {
@@ -307,11 +321,71 @@ namespace membresias.be.Services
                 miembro.ModifiedDate = new DateTimeOffset(DateTime.UtcNow).ToOffset(TimeSpan.FromHours(-6));
 
                 var result = await _dbContext.SaveChangesAsync() > 0;
-                return result; 
+                return result;
             }
             finally
             {
-                _logger.LogInformation($"Finalizando solicitud de {nameof(DeleteMiembro)}"); 
+                _logger.LogInformation($"Finalizando solicitud de {nameof(DeleteMiembro)}");
+            }
+        }
+
+        public async Task<EstadoCuentaDto> GetEstadoDeCuenta(int id, DateTimeOffset fechaDesde, DateTimeOffset fechaHasta)
+        {
+            try
+            {
+
+                var miembro = await _dbContext.Miembros
+                    .Where(m => !m.IsDeleted
+                        && m.IdMiembro == id)
+                    .FirstAsync(); 
+
+                var cargos = await _dbContext.Cargos
+                    .Where(c => !c.IsDeleted
+                        && c.IdMiembro == id
+                        && c.FechaCargo.Date >= fechaDesde.Date
+                        && c.FechaCargo.Date <= fechaHasta.Date)
+                    .ToListAsync();
+
+                var pagosPendientes = cargos.Where(c => !c.IsPagado).Count();
+                var pagosRealizados = cargos.Where(c => c.IsPagado).Count();
+                var totalAPagar = cargos.Where(c => !c.IsPagado).Sum(c => c.Monto); 
+
+                var estadoCuentaDto = new EstadoCuentaDto();
+
+                estadoCuentaDto.Nombre = miembro.Nombre;
+                estadoCuentaDto.PrimerApellido = miembro.PrimerApellido;
+                estadoCuentaDto.SegundoApellido = miembro.SegundoApellido;
+                estadoCuentaDto.MembresiaCodigo = miembro.MembresiaCodigo;
+                estadoCuentaDto.MembresiaNombre = Membresia.GetByCode(miembro.MembresiaCodigo).Nombre; 
+                estadoCuentaDto.Clave = miembro.Clave!;
+                estadoCuentaDto.FechaEmision = new DateTimeOffset(DateTime.UtcNow).ToOffset(TimeSpan.FromHours(-6)).ToString("yyyy-MM-dd");
+                estadoCuentaDto.Periodo = $"{fechaDesde.Date.ToString("yyyy-MM-dd")} - {fechaHasta.Date.ToString("yyyy-MM-dd")}";
+                estadoCuentaDto.TotalPendientes = pagosPendientes;
+                estadoCuentaDto.TotalPagados = pagosRealizados;
+                estadoCuentaDto.TotalAPagar = totalAPagar;
+                estadoCuentaDto.Detalles = new List<EstadoCuentaDetalleDto>(); 
+
+                foreach (var cargo in cargos)
+                {
+                    var detalle = new EstadoCuentaDetalleDto();
+
+                    detalle.Descripcion = cargo.Descripcion ?? string.Empty;
+                    detalle.Monto = cargo.Monto;
+                    detalle.FechaCargo = cargo.FechaCargo.Date.ToString("yyyy-MM-dd");
+                    detalle.FechaLimitePago = cargo.FechaCargo.Date.AddMonths(3).ToString("yyyy-MM-dd");
+                    detalle.IsPagado = cargo.IsPagado;
+                    detalle.IdMiembro = cargo.IdMiembro;
+                    detalle.ConceptoCodigo = cargo.ConceptoCodigo;
+                    detalle.ConceptoNombre = Concepto.GetByCode(cargo.ConceptoCodigo).Nombre;
+
+                    estadoCuentaDto.Detalles.Add(detalle); 
+                }
+
+                return estadoCuentaDto; 
+            }
+            finally
+            {
+
             }
         }
 

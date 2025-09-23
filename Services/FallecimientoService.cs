@@ -50,6 +50,7 @@ namespace membresias.be.Services
 
                 var miembros = await _dbContext.Miembros
                     .Where(m => !m.IsDeleted
+                        && m.MiembroEstatusCodigo!.Equals(MiembroEstatus.Activo.Codigo)
                         && m.MembresiaCodigo.Equals(Membresia.Socio.Codigo)
                         && m.IdMiembro != miembroFallecido.IdMiembro)
                     .ToListAsync();
@@ -68,6 +69,7 @@ namespace membresias.be.Services
 
                         var cargo = new Cargo()
                         {
+                            Descripcion = "AYUDA MUTUA",
                             Monto = monto,
                             FechaCargo = new DateTimeOffset(DateTime.UtcNow).ToOffset(TimeSpan.FromHours(-6)),
                             IdMiembro = miembro.IdMiembro,
